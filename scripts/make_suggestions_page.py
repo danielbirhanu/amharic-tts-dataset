@@ -9,6 +9,7 @@ ap.add_argument("--proposals", nargs="+",
                 default=["data/transcripts/llm_cleaned.jsonl", "data/transcripts/llm_cleaned_31b.jsonl"])
 ap.add_argument("--audio_dir", default="data/interim/tts_audio/segments")
 ap.add_argument("--out", default="suggestions.html")
+ap.add_argument("--skip", default="data/transcripts/suggestions_decisions.jsonl")
 args = ap.parse_args()
 
 
@@ -22,6 +23,7 @@ def load(path):
 
 asr = load(args.asr)
 seg = load(args.segments)
+decided = {k for k, v in load(args.skip).items() if v.get("status") in ("accepted", "rejected", "unsure")}
 if not asr:
     raise SystemExit("asr.jsonl not found or empty")
 sources = {Path(p).stem: load(p) for p in args.proposals}
@@ -31,6 +33,8 @@ if not sources:
 
 items, skipped_same_sound, total_edits = [], 0, 0
 for cid in sorted(asr):
+    if cid in decided:
+      continue
     words = asr[cid]["asr_text"].split()
     edits, notes = {}, []
     for sname, recs in sources.items():
